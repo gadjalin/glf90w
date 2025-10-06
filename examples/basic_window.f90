@@ -3,18 +3,21 @@ program basic_window
 
     implicit none
     type(GLFWwindow) :: window
-    integer :: major, minor, rev
+    integer :: ierr
 
     call glfwSetErrorCallback(handle_error)
 
-    if (.not. glfwInit()) stop 'glfwInit()'
+    call glfwInit(ierr)
+    if (ierr /= 0) &
+        stop 'glfwInit()'
 
-    print '(''Linked: '',A)', glfwGetVersionString()
-    call glfwGetVersion(major, minor, rev)
-    print '(''Compiled: '',3(I1,''.''))', major, minor, rev
+    window = glfwCreateWindow(800, 600, 'Hello World')
+    if (.not. associated(window)) then
+        call glfwTerminate()
+        stop 'glfwCreateWindow()'
+    end if
 
-    window = glfwCreateWindow(800, 600, 'GLF90W Basic App')
-    if (.not. associated(window)) stop 'glfwCreateWindow()'
+    call glfwMakeContextCurrent(window)
 
     do
         call glfwPollEvents()
