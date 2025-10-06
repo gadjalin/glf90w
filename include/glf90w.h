@@ -1,7 +1,7 @@
 // ------------------
 //
-// GLF90W (for GLFW 3.4) - https://github.com/AarnoldGad/glf90w
-// Fortran 2003 bindings for GLFW (Yes, I know...)
+// GLF90W (for GLFW 3.4) - https://github.com/gadjalin/glf90w
+// Fortran 2008+ bindings for GLFW
 //
 // -----------------
 // glf90w.h
