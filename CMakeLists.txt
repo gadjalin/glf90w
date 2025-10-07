@@ -2,26 +2,58 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.20 FATAL_ERROR)
 
 # --- Project configuration
 PROJECT(GLF90W
-    VERSION 0.2.0
+    VERSION 0.2.1
     DESCRIPTION "Fortran bindings for GLFW."
     HOMEPAGE_URL https://github.com/gadjalin/glf90w.git
     LANGUAGES C Fortran
 )
 
-SET_PROPERTY(GLOBAL PROPERTY USE_FOLDER ON)
+MESSAGE(STATUS "Setting up GLF90W ${GLF90W_VERSION_MAJOR}-${GLF90W_VERSION_MINOR}.${GLF90W_VERSION_PATCH}")
 
-SET(CMAKE_CONFIGURATION_TYPES Release Debug)
+SET_PROPERTY(GLOBAL PROPERTY USE_FOLDER ON)
 SET(CMAKE_DEBUG_POSTFIX -d)
-SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+GET_PROPERTY(USE_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+IF(USE_MULTI_CONFIG)
+    SET(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
+ELSE()
+    IF(NOT CMAKE_BUILD_TYPE)
+        SET(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+    ENDIF()
+    SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY HELPSTRING "Select build type")
+    SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug;Release")
+    MESSAGE(STATUS "Using configuration type ${CMAKE_BUILD_TYPE}")
+
+    SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
+    SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
+    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
+ENDIF()
 
 OPTION(BUILD_SHARED_LIBS "Build shared libraries." OFF)
 
 # TODO Fortran 2023 support. And 2008 for compatibility?
 # Currently clashes with definition of f_c_string in glf90w.F90
 IF(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+    # Language Standard
     ADD_COMPILE_OPTIONS("$<$<COMPILE_LANGUAGE:Fortran>:-std=f2018>")
+    # Debug
+    ADD_COMPILE_OPTIONS("$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CONFIG:Debug>>:-fbacktrace>")
+    ADD_COMPILE_OPTIONS("$<$<COMPILE_LANGUAGE:Fortran>:-Wall;-Wextra;-Wimplicit-interface;-Wimplicit-procedure>")
+    # Optimisation
+    ADD_COMPILE_OPTIONS("$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CONFIG:Debug>>:-fcheck=all;-Og;-g>")
+    ADD_COMPILE_OPTIONS("$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CONFIG:Release>>:-O3>")
+    # Enforce no implicit typing
+    ADD_COMPILE_OPTIONS("$<$<COMPILE_LANGUAGE:Fortran>:-fimplicit-none>")
 ELSEIF(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+    # Language Standard
     ADD_COMPILE_OPTIONS("$<$<COMPILE_LANGUAGE:Fortran>:-stand;f2018>")
+    # Debug
+    ADD_COMPILE_OPTIONS("$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CONFIG:Debug>>:-traceback>")
+    ADD_COMPILE_OPTIONS("$<$<COMPILE_LANGUAGE:Fortran>:-warn;all>")
+    # Optimisation
+    ADD_COMPILE_OPTIONS("$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CONFIG:Debug>>:-check;all;-debug;all;-g>")
+    ADD_COMPILE_OPTIONS("$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CONFIG:Release>>:-O3;-vec>")
 ELSE()
     MESSAGE(WARNING
         "Unsupported Fortran compiler.\n"
@@ -29,10 +61,10 @@ ELSE()
     )
 ENDIF()
 
-# --- Build base GLFW
+# --- Build GLFW library
 ADD_SUBDIRECTORY(glfw)
 
-# --- Build Fortran bindings
+# --- Build GLF90W Fortran bindings
 ADD_LIBRARY(glf90w)
 
 SET_TARGET_PROPERTIES(glf90w PROPERTIES

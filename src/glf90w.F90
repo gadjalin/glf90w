@@ -1933,8 +1933,12 @@ module glf90w
             implicit none
             integer, optional, intent(out) :: ierr
 
+            integer(kind=c_int) :: success
+
             call force_static_fortran_linkage()
-            ierr = merge(1, 0, c_glfwInit() == GLFW_FALSE)
+
+            success = c_glfwInit()
+            if (present(ierr)) ierr = merge(1, 0, success == GLFW_FALSE)
         end subroutine glfwInit
 
         subroutine glfwTerminate()
@@ -3189,13 +3193,16 @@ module glf90w
             end if
         end subroutine glfwSetJoystickCallback
 
-        function glfwUpdateGamepadMappings(mappings) result(success)
+        subroutine glfwUpdateGamepadMappings(mappings, ierr)
             implicit none
-            character(len=*, kind=c_char), intent(in) :: mappings
-            logical                                   :: success
+            character(len=*, kind=c_char), intent(in)  :: mappings
+            integer, optional,             intent(out) :: ierr
 
-            success = merge(.false., .true., c_glfwUpdateGamepadMappings(f_c_string(mappings)) == GLFW_FALSE)
-        end function glfwUpdateGamepadMappings
+            integer(kind=c_int) :: success
+
+            success = c_glfwUpdateGamepadMappings(f_c_string(mappings))
+            if (present(ierr)) ierr = merge(1, 0, success == GLFW_FALSE)
+        end subroutine glfwUpdateGamepadMappings
 
         function glfwGetGamepadName(jid) result(name)
             implicit none
@@ -3212,14 +3219,17 @@ module glf90w
             end if
         end function glfwGetGamepadName
 
-        function glfwGetGamepadState(jid, state) result(success)
+        subroutine glfwGetGamepadState(jid, state, ierr)
             implicit none
-            integer(kind=c_int), intent(in) :: jid
-            type(GLFWgamepadstate)          :: state
-            logical                         :: success
+            integer(kind=c_int),    intent(in)  :: jid
+            type(GLFWgamepadstate), intent(out) :: state
+            integer, optional,      intent(out) :: ierr
 
-            success = merge(.false., .true., c_glfwGetGamepadState(jid, state) == GLFW_FALSE)
-        end function glfwGetGamepadState
+            integer(kind=c_int) :: success
+
+            success = c_glfwGetGamepadState(jid, state)
+            if (present(ierr)) ierr = merge(1, 0, success == GLFW_FALSE)
+        end subroutine glfwGetGamepadState
 
         subroutine glfwSetClipboardString(window, string)
             implicit none
