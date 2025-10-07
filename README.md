@@ -1,16 +1,299 @@
 # GLF90W
 
-&nbsp;&nbsp; *"But it's actually F2018..."*
+&nbsp;&nbsp; *"Because why not."*
 
 ---
 
-## Description
+## Introduction
 
-Fortran bindings for [GLFW](https://www.glfw.org) 3.4 and above.
+GLF90W provides complete Fortran bindings for the [GLFW](https://www.glfw.org) C library version 3.4.
 
-## Credits
+It is made so that users already accustomed to the C library can
+straightforwardly start writing equivalent Fortran code using the binding, with
+a few exceptions meant to better fit the Fortran programming style.
 
-[Gaétan J.A.M. Jalin](https://github.com/AarnoldGad/)
+It almost entirely hides the C-interoperability part so that the user should not
+have to worry about using the `iso_c_binding` module.
+Only [custom allocator callbacks](https://www.glfw.org/docs/latest/intro_guide.html#init_allocator)
+and user-pointer-related functions (`glfwSet*UserPointer` and
+`glfwGet*UserPointer`) still require the user to provide or handle `type(c_ptr)` inputs.
+This is because custom allocators should probably be written in C in any way,
+and user pointers are meant to give the user as much freedom as possible, which
+is harder to achieve in Fortran due to its more limiting type system.
 
-Licence: zlib, same as [GLFW](https://www.glfw.org) (See LICENCE file)
+I started this project initially as a challenge to get comfortable with the Fortran language.
+I use it and maintain it on my free time and for personal projects, and I have
+not fully tested the port.
+Consequently, if you have any request, suggestion for improvements, or if you found something that does not behave as expected, you are
+invited to open a [github issue](https://github.com/gadjalin/glf90w/issues) or a [pull request](https://github.com/gadjalin/glf90w/pulls).
+It is very welcome!
+
+This binding is maintained by [Gaétan J.A.M. Jalin](https://github.com/gadjalin/).
+
+## Compilation
+
+This project uses CMake to compile.
+The only requirements are a Fortran compiler supporting the 2018 standard
+(and includeing a preprocessor) and CMake.
+However, this repository includes GLFW as a submodule ([version 3.4](https://github.com/glfw/glfw/commits/3.4))
+so that it may be compiled together with GLF90W.
+Please refer to the [GLFW documentation](https://www.glfw.org/docs/latest/compile.html) for information about
+GLFW's dependencies before compiling.
+
+Because the Fortran language is not ABI compatible (and I will not provide
+precompiled binaries for every platform and compiler version imaginable), it is
+usually required to compile every project and their dependencies using the same
+compiler and compiler version. This is especially true for libraries that must
+provide their module (.mod) files as well.
+The C language, on the other hand, being ABI compatible, it is technically not
+required to compile the base GLFW library yourself to link GLF90W.
+However, it is recommended as the CMake script is based on this assumption.
+
+The first step is to clone this repository:
+```
+git clone --recurse-submodules https://github.com/gadjalin/glf90w.git
+```
+This will also initialise the GLFW submodule.
+
+You can then use CMake to compile GLF90W, e.g. on macOS and Linux:
+```
+cd glf90w
+cmake -DBUILD_SHARED_LIBS=OFF -B bin
+cmake --build bin
+```
+It is usually recommended build a static library by setting the CMake `BUILD_SHARED_LIBS` variables to `OFF`.
+In the same way, you can also use `-DCMAKE_BUILD_TYPE=Debug` to build a debug version (minimal compiler optimisation and debug symbols).
+By default, `BUILD_SHARED_LIBS` is `OFF` and `CMAKE_BUILD_TYPE` is `Release` (full compiler optimisation and no debug symbols).
+
+On Windows, the exact process may vary depending on your environment. You may
+use tools like Visual Studio Code, MinGW, and others, such as CMake GUI.
+
+Finally, you may include GLF90W as a build step in your own projects' CMake scripts by adding it as a subdirectory:
+```
+ADD_SUBDIRECTORY(path_to_glf90w)
+...
+TARGET_LINK_LIBRARIES(... glf90w ...)
+```
+
+## Usage
+
+GLF90W is made so that essential knowledge of the Fortran language and the
+official [GLFW C Documentation](https://www.glfw.org/docs/latest/) should
+mostly be enough to figure out how to do things.
+
+A basic working example is given [here](examples/basic_window.F90) to reflect
+[this simple C example](https://www.glfw.org/documentation.html).
+
+There are however a few subtleties, introduced as a consequence of Fortran not
+being C, that deserve a clear explanation for the unsure user.
+
+### Opaque pointers
+
+GLFW uses many opaque pointer types such as `GLFWwindow`, `GLFWmonitor`, etc.
+so that the user does not have to worry about the actual, platform-dependent
+implementation.
+Creating a window looks like this:
+```c
+GLFWwindow* window = glfwCreateWindow(...);
+if (!window)
+{
+    // Error
+    return -1;
+}
+```
+and the user can check if things went well by testing if the `window`
+pointer is not null.
+
+However, Fortran pointers work quite differently from the C pointers.
+The equivalent Fortran code looks like this:
+```fortran
+type(GLFWwindow) :: window
+
+window = glfwCreateWindow(...)
+if (.not. associated(window)) then
+    ! Error
+    stop -1
+end if
+```
+The catch is that the `GLFWwindow` type still acts as an opaque type and can be
+tested with the Fortran pointer semantic, reproducing the C logic, but is not declared using
+the `pointer` attribute. This can be confusing, however, it also simplifies
+the syntax and makes it more natural (removing the pointer assignement `=>`).
+
+Under the hood, opaque types such as `GLFWmonitor` contain a `type(c_ptr)`
+component that is the actual C `GLFWmonitor*` handle, which can be accessed
+using for example `monitor % handle`, if need be.
+Note that the `GLFWwindow` type is slightly more complicated as all created windows must
+be tracked for their associated callbacks, and the `type(c_ptr)` handle can be
+accessed using `window % handle % handle` instead.
+
+### Logicals
+
+The C language does not have a `bool` type as in C++, and use integers instead.
+But Fortran has a much appreciated `logical` type.
+As a consequence, there are a couple of GLFW functions that return or take
+variables meant to be treated as booleans using the `GLFW_FALSE` and
+`GLFW_TRUE` constants.
+GLF90W makes use of the `logical` type instead, so that functions like
+`glfwWindowShouldClose` can naturally be included in `if` statements.
+
+This is not true for every function that return GLFW_FALSE/TRUE to indicate
+success or failure.
+Functions where such a return value *could* be ignored instead use the
+"Fortranic" `ierr` optional argument.
+Practically, the `glfwInit`, `glfwUpdateGamepadMappings`, and
+`glfwGetGamepadState` do not return a `logical`, but are instead `subroutine`s
+taking an optional integer `ierr`.
+If the user decides not to ignore this value, the idiom is as follows
+```fortran
+call glfwInit(ierr)
+if (ierr /= 0) then
+    ! Error
+    stop -1
+end if
+```
+
+### Pointer arguments
+
+In the same fashion, the C language is what is known as a pass-by-value
+language, whereas Fortran is pass-by-reference.
+This means that where the Fortran language can use subroutines and the `intent(out)`
+attribute to return values to the user through one of the rountine's input
+argument, the C language must ask the user for pointers.
+On the other hand, this means that the output can be ignore by passing `NULL`
+to the C function (assuming it can handle this case), whereas something must be
+passed to the Fortran routine, unless the dummy argument is marked as `optional`.
+
+There are a few GLFW functions that rely on this mechanic to return multiple
+values to the user, for example `glfwGetCursorPos` takes two `double*` to store
+the result, but these can be ignore by passing `NULL`.
+To mimic this behaviour and allow the user to ignore certain return arguments, the
+arguments in question are marked as `optional` in the Fortran binding, so that
+doing:
+```fortran
+call glfwGetCursorPos(window, ypos=y)
+```
+is equivalent to the following C code:
+```c
+glfwGetCursorPos(window, NULL, y);
+```
+
+This logic applies to function pointers as well, where the `glfwSet*Callback`
+collection of functions can take a `NULL` function pointer to reset a callback, in which
+case the Fortran binding marks the it as optional in the same way as before, so
+that:
+```fortran
+call glfwSetWindowCloseCallback(window)
+```
+will deactivate the window close callback for this window as the following C
+code would:
+```c
+glfwSetWindowCloseCallback(window, NULL);
+```
+
+### Arrays
+
+Some functions take or return arrays (in the form of C pointers), such as
+`float const* glfwGetJoystickAxes(int jid, int* count)`.
+Such functions usually take additional arguments (here the `count` argument) to specify the size of the array.
+Because the Fortran array and pointer semantics are vastly different from the C
+ones, the user can either use a `pointer` and the pointer assignment `=>`, or
+make a copy by using a normal assignment on a non-pointer variable, i.e
+```fortran
+real(kind=real32), dimension(:), pointer :: axes
+axes => glfwGetJoystickAxes(jid)
+! vs
+real(kind=real32), dimension(:), allocatable :: axes
+axes = glfwGetJoystickAxes(jid)
+```
+in either case, a `count` argument is not necessary as it can be obtained by
+doing `size(axes)` instead.
+
+### Callbacks
+
+GLFW provides the user with callback facilities to handle events such as
+internal errors, keyboard key presses or mouse clicks, where the user-provided callback 
+routines must match a certain signature.
+The [basic_window.F90 example](examples/basic_window.f90) shows how to setup an
+error callback.
+
+GLF90W introduces callback wrappers to handle the C-interopability with GLFW,
+such as string conversions and the pass-by-value-pass-by-reference extravaganza.
+This way, the user may provide proper Fortran callback routines and not have to
+worry about the fact that GLFW will call them with C standards, while still
+matching the signature expected by the C code, with a mostly straight
+translation to Fortran.
+
+The expected signatures for the callback routines can be found in the GLFW
+Documentation for the C language, and the translation to Fortran should be straightforward for most of them
+(`char const*` becomes `character(*)`, `GLFWwindow*` becomes `type(GLFWwindow)`, etc).
+However, some Fortran interfaces, such as `GLFWcursorenterfun` use the `logical`
+type where this is, well, logical.
+Also note that `GLFWscrollfun` for the mouse scroll callback takes `double`s!
+
+The exact Fortran interfaces can be found in the [glf90w.F90](src/glf90w.F90)
+file around line 550.
+
+This is an example of setting a callback for the mouse scroll event
+```fortran
+program
+    ! The GLFWscrollfun signature takes doubles!
+    use, intrinsic :: iso_fortran_env, only: real64
+    use glf90w
+
+    ...
+    call glfwSetScrollCallback(window, mouse_scroll)
+    ...
+
+    contains
+
+        subroutine mouse_scroll(window, xoffset, yoffset)
+            implicit none
+            type(GLFWwindow), intent(in) :: window
+            real(kind=real64), intent(in) :: xoffset, yoffset
+
+            write (6, '(A)') 'Mouse scrolled!'
+        end subroutine mouse_scroll
+
+end program
+```
+
+One less straightforward routine is the `GLFWdropfun` callback, which is called when file paths are drag-and-dropped over the window.
+In C, this function expects a `char const*[]` (an array of strings).
+The corresponding Fortran signature for this callback acts in a slightly more subtle way:
+```fortran
+subroutine drop(window, paths)
+    implicit none
+    type(GLFWwindow), intent(in) :: window
+    character(len=:), dimension(:), pointer, intent(in) :: paths
+end subroutine drop
+```
+It takes a pointer to an allocated character array actual argument.
+Note that the `path_count` argument found in the C signature has disappeared as
+well, as it is implicitly passed in Fortran and can be retrieved using `size(paths)`.
+Then, all character strings in the array have the same length, given by `len(paths)`, due to Fortran
+limitations, and correspond to the length of the longest string found in the
+array. So remember to `trim` when manipulating these strings.
+
+Lastly, each routine in the `glfwSet*Callback` collection can return a pointer
+to the routine that was previously being used for this callback, or `NULL` if it was not set.
+In C, this pointer is the return value and can easily be ignored.
+In Fortran, `function`s cannot be `call`ed (in principle),
+and that would make it cumbersome to have to perform an assignment each time a
+callback is set.
+To palliate this, the `glfwSet*Callback` family of rountines are defined as
+`subroutine`s and take an additional, optional, intent(out) argument that will
+be filled with a pointer to the previous callback if present.
+
+To reset a callback, simply don't pass one, as shown in [the previous
+section](#pointer-arguments).
+
+## Contact
+
+If you have any suggestion, request, found a bug, or have an improvement to submit,
+please file an [issue](https://github.com/gadjalin/glf90w/issues) or [pull request](https://github.com/gadjalin/glf90w/pulls) accordingly.
+
+## Licence
+
+zlib, same as [GLFW](https://www.glfw.org) (See [LICENCE](LICENCE) file)
 
