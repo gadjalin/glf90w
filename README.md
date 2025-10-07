@@ -30,6 +30,20 @@ It is very welcome!
 
 This binding is maintained by [Gaétan J.A.M. Jalin](https://github.com/gadjalin/).
 
+Table of Contents
+=================
+
+* [GLF90W](#glf90w)
+   * [Introduction](#introduction)
+   * [Compilation](#compilation)
+   * [Usage](#usage)
+      * [Opaque pointers](#opaque-pointers)
+      * [Logicals](#logicals)
+      * [Pointer arguments](#pointer-arguments)
+      * [Arrays](#arrays)
+      * [Callbacks](#callbacks)
+   * [Contact](#contact)
+
 ## Compilation
 
 This project uses CMake to compile.
@@ -75,7 +89,7 @@ ADD_SUBDIRECTORY(path_to_glf90w)
 TARGET_LINK_LIBRARIES(... glf90w ...)
 ```
 
-## Usage
+## Usage
 
 GLF90W is made so that essential knowledge of the Fortran language and the
 official [GLFW C Documentation](https://www.glfw.org/docs/latest/) should
@@ -293,7 +307,7 @@ section](#pointer-arguments).
 If you have any suggestion, request, found a bug, or have an improvement to submit,
 please file an [issue](https://github.com/gadjalin/glf90w/issues) or [pull request](https://github.com/gadjalin/glf90w/pulls) accordingly.
 
-## Licence
+## Licence
 
 zlib, same as [GLFW](https://www.glfw.org) (See [LICENCE](LICENCE) file)
 
