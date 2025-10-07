@@ -379,6 +379,14 @@ module glf90w
     integer(kind=c_int), bind(C, name="glf90w_dont_care"),                    public :: GLFW_DONT_CARE
 
 
+    ! Dummy function to force the linker into pulling the symbols in
+    ! glf90w.c when linking into a static library
+    interface
+        subroutine force_static_fortran_linkage() bind(C, name='force_static_fortran_linkage')
+        end subroutine
+    end interface
+
+
     ! --------------------------------------------------------------------------
     ! GLF90W API types
     ! --------------------------------------------------------------------------
@@ -1925,6 +1933,7 @@ module glf90w
             implicit none
             integer, optional, intent(out) :: ierr
 
+            call force_static_fortran_linkage()
             ierr = merge(1, 0, c_glfwInit() == GLFW_FALSE)
         end subroutine glfwInit
 

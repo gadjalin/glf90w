@@ -9,10 +9,6 @@
 // Gaétan J.A.M. Jalin
 // See end of file for complete licence description
 // -----------------
-#include "glf90w.h"
-
-#include <stdint.h>
-
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
@@ -372,6 +368,10 @@ int const glf90w_platform_wayland             = GLFW_PLATFORM_WAYLAND;
 int const glf90w_platform_x11                 = GLFW_PLATFORM_X11;
 int const glf90w_platform_null                = GLFW_PLATFORM_NULL;
 int const glf90w_dont_care                    = GLFW_DONT_CARE;
+
+// Dummy function to force the linker into pulling the symbols in
+// this file when linking into a static library
+void force_static_fortran_linkage() {}
 
 // -----------------
 // GLF90W is provided under the zlib licence
