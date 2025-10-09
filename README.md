@@ -89,6 +89,27 @@ ADD_SUBDIRECTORY(path_to_glf90w)
 TARGET_LINK_LIBRARIES(... glf90w ...)
 ```
 
+### Fortran 2023 compatibility
+
+The Fortran 2023 standard introduced two new intrinsic routines to the
+`iso_c_binding` module to deal with C-interoperability. Those are `f_c_string`
+and `c_f_strpointer`, used to convert Fortran strings to C, null-terminated
+strings, and back from a C `char const*` to a Fortran `character` scalar, repectively.
+
+GLF90W implements its own, purpotedly standard-compliant, versions of these functions for backward compatibility
+with older standards, but can be deactivated in case the user wishes to use the
+intrinsic ones instead.
+Because some compilers do not yet fully support this standard, the two routines
+can be deactivated seperately using preprocessor macros.
+
+Define `GLF90W_USE_INTRINSIC_F_C_STRING` to deactivate the custom `f_c_string`
+implementation (and rely on the intrinsic).
+Define `GLF90W_USE_INTRINSIC_C_F_STRPOINTER` to deactivate the custom `f_c_string`
+implementation (and rely on the intrinsic).
+
+This can be done using CMake by adding these options to the command line
+`-DGLF90W_USE_INTRINSIC_F_C_STRING` and `-DGLF90W_USE_INTRINSIC_C_F_STRPOINTER`
+
 ## Usage
 
 GLF90W is made so that essential knowledge of the Fortran language and the
