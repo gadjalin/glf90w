@@ -3404,7 +3404,9 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: error_code
             type(c_ptr),         value, intent(in) :: desc_ptr
 
+            integer(kind=c_int) :: f_error_code
             character(len=:, kind=c_char), pointer :: f_desc
+            f_error_code = error_code
 
             if (c_associated(desc_ptr)) then
                 call c_f_strpointer(desc_ptr, f_desc, c_strlen(desc_ptr))
@@ -3412,7 +3414,7 @@ module glf90w
                 nullify(f_desc)
             end if
 
-            call glf90wErrorCallback(error_code, f_desc)
+            call glf90wErrorCallback(f_error_code, f_desc)
         end subroutine glf90wErrorWrapper
 
         subroutine glf90wWindowPosWrapper(c_window, x, y) bind(C)
@@ -3421,9 +3423,12 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: x, y
 
             type(GLF90Wwindow), pointer :: window
+            integer(kind=c_int) :: f_x, f_y
+            f_x = x
+            f_y = y
 
             window => find_window(c_window)
-            call window%pos(GLFWwindow(handle = window), x, y)
+            call window%pos(GLFWwindow(handle = window), f_x, f_y)
         end subroutine glf90wWindowPosWrapper
 
         subroutine glf90wWindowSizeWrapper(c_window, width, height) bind(C)
@@ -3432,9 +3437,12 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: width, height
 
             type(GLF90Wwindow), pointer :: window
+            integer(kind=c_int) :: f_width, f_height
+            f_width = width
+            f_height = height
 
             window => find_window(c_window)
-            call window%size(GLFWwindow(handle = window), width, height)
+            call window%size(GLFWwindow(handle = window), f_width, f_height)
         end subroutine glf90wWindowSizeWrapper
 
         subroutine glf90wWindowCloseWrapper(c_window) bind(C)
@@ -3496,9 +3504,12 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: width, height
 
             type(GLF90Wwindow), pointer :: window
+            integer(kind=c_int) :: f_width, f_height
+            f_width = width
+            f_height = height
 
             window => find_window(c_window)
-            call window%framebuffer_size(GLFWwindow(handle = window), width, height)
+            call window%framebuffer_size(GLFWwindow(handle = window), f_width, f_height)
         end subroutine glf90wFramebufferSizeWrapper
 
         subroutine glf90wWindowContentScaleWrapper(c_window, xscale, yscale) bind(C)
@@ -3507,9 +3518,12 @@ module glf90w
             real(kind=c_float), value, intent(in) :: xscale, yscale
 
             type(GLF90Wwindow), pointer :: window
+            real(kind=c_float) :: f_xscale, f_yscale
+            f_xscale = xscale
+            f_yscale = yscale
 
             window => find_window(c_window)
-            call window%content_scale(GLFWwindow(handle = window), xscale, yscale)
+            call window%content_scale(GLFWwindow(handle = window), f_xscale, f_yscale)
         end subroutine glf90wWindowContentScaleWrapper
 
         subroutine glf90wMouseButtonWrapper(c_window, button, action, mods) bind(C)
@@ -3518,20 +3532,27 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: button, action, mods
 
             type(GLF90Wwindow), pointer :: window
+            integer(kind=c_int) :: f_button, f_action, f_mods
+            f_button = button
+            f_action = action
+            f_mods = mods
 
             window => find_window(c_window)
-            call window%mouse(GLFWwindow(handle = window), button, action, mods)
+            call window%mouse(GLFWwindow(handle = window), f_button, f_action, f_mods)
         end subroutine glf90wMouseButtonWrapper
 
-        subroutine glf90wCursorPosWrapper(c_window, x, y)
+        subroutine glf90wCursorPosWrapper(c_window, x, y) bind(C)
             implicit none
             type(c_ptr),         value, intent(in) :: c_window
             real(kind=c_double), value, intent(in) :: x, y
 
             type(GLF90Wwindow), pointer :: window
+            real(kind=c_double) :: f_x, f_y
+            f_x = x
+            f_y = y
 
             window => find_window(c_window)
-            call window%cursor_pos(GLFWwindow(handle = window), x, y)
+            call window%cursor_pos(GLFWwindow(handle = window), f_x, f_y)
         end subroutine glf90wCursorPosWrapper
 
         subroutine glf90wCursorEnterWrapper(c_window, entered) bind(C)
@@ -3545,15 +3566,18 @@ module glf90w
             call window%cursor_enter(GLFWwindow(handle = window), merge(.false., .true., entered == GLFW_FALSE))
         end subroutine glf90wCursorEnterWrapper 
 
-        subroutine glf90wScrollWrapper(c_window, xoffset, yoffset)
+        subroutine glf90wScrollWrapper(c_window, xoffset, yoffset) bind(C)
             implicit none
             type(c_ptr),         value, intent(in) :: c_window
             real(kind=c_double), value, intent(in) :: xoffset, yoffset
 
             type(GLF90Wwindow), pointer :: window
+            real(kind=c_double) :: f_xoffset, f_yoffset
+            f_xoffset = xoffset
+            f_yoffset = yoffset
 
             window => find_window(c_window)
-            call window%scroll(GLFWwindow(handle = window), xoffset, yoffset)
+            call window%scroll(GLFWwindow(handle = window), f_xoffset, f_yoffset)
         end subroutine glf90wScrollWrapper
 
         subroutine glf90wKeyWrapper(c_window, key, scancode, action, mods) bind(C)
@@ -3562,9 +3586,14 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: key, scancode, action, mods
 
             type(GLF90Wwindow), pointer :: window
+            integer(kind=c_int) :: f_key, f_scancode, f_action, f_mods
+            f_key = key
+            f_scancode = scancode
+            f_action = action
+            f_mods = mods
 
             window => find_window(c_window)
-            call window%key(GLFWwindow(handle = window), key, scancode, action, mods)
+            call window%key(GLFWwindow(handle = window), f_key, f_scancode, f_action, f_mods)
         end subroutine glf90wKeyWrapper
 
         subroutine glf90wCharWrapper(c_window, codepoint) bind(C)
@@ -3573,9 +3602,11 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: codepoint
 
             type(GLF90Wwindow), pointer :: window
+            integer(kind=c_int) :: f_codepoint
+            f_codepoint = codepoint
 
             window => find_window(c_window)
-            call window%char(GLFWwindow(handle = window), codepoint)
+            call window%char(GLFWwindow(handle = window), f_codepoint)
         end subroutine glf90wCharWrapper
 
         subroutine glf90wCharModsWrapper(c_window, codepoint, mods) bind(C)
@@ -3584,9 +3615,12 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: codepoint, mods
 
             type(GLF90Wwindow), pointer :: window
+            integer(kind=c_int) :: f_codepoint, f_mods
+            f_codepoint = codepoint
+            f_mods = mods
 
             window => find_window(c_window)
-            call window%mods(GLFWwindow(handle = window), codepoint, mods)
+            call window%mods(GLFWwindow(handle = window), f_codepoint, f_mods)
         end subroutine glf90wCharModsWrapper
 
         subroutine glf90wDropWrapper(c_window, path_count, paths) bind(C)
@@ -3621,7 +3655,10 @@ module glf90w
             type(c_ptr),         value, intent(in) :: monitor
             integer(kind=c_int), value, intent(in) :: event
 
-            call glf90wMonitorCallback(GLFWmonitor(handle = monitor), event)
+            integer(kind=c_int) :: f_event
+            f_event = event
+
+            call glf90wMonitorCallback(GLFWmonitor(handle = monitor), f_event)
         end subroutine glf90wMonitorWrapper
 
 
@@ -3630,7 +3667,10 @@ module glf90w
             integer(kind=c_int), value, intent(in) :: jid
             integer(kind=c_int), value, intent(in) :: event
 
-            call glf90wJoystickCallback(jid, event)
+            integer(kind=c_int) :: f_event
+            f_event = event
+
+            call glf90wJoystickCallback(jid, f_event)
         end subroutine glf90wJoystickWrapper
 
 
@@ -3693,6 +3733,7 @@ module glf90w
         ! TODO: Clashes with Fortran 2023
         ! ----------------------------------------------------------------------
 
+#ifndef GLF90W_USE_INTRINSIC_F_C_STRING
         ! Converts a Fortran character string to a C interoperable string (character array)
         pure function f_c_string(string, asis) result(c_string)
             implicit none
@@ -3720,7 +3761,9 @@ module glf90w
             end do
             c_string(c_length) = c_null_char
         end function f_c_string
+#endif
 
+#ifndef GLF90W_USE_INTRINSIC_C_F_STRPOINTER
         ! Obtain a Fortran pointer to a C string (char*)
         subroutine c_f_strpointer(cstrptr, fstrptr, nchars)
             implicit none
@@ -3732,6 +3775,7 @@ module glf90w
             call c_f_pointer(cstrptr, cstrarray)
             fstrptr => cstrarray
         end subroutine c_f_strpointer
+#endif
 
 end module glf90w
 !! -----------------

@@ -45,7 +45,7 @@ IF(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
     ADD_COMPILE_OPTIONS("$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CONFIG:Release>>:-O3>")
     # Enforce no implicit typing
     ADD_COMPILE_OPTIONS("$<$<COMPILE_LANGUAGE:Fortran>:-fimplicit-none>")
-ELSEIF(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+ELSEIF(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel" OR CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM")
     # Language Standard
     ADD_COMPILE_OPTIONS("$<$<COMPILE_LANGUAGE:Fortran>:-stand;f2018>")
     # Debug
@@ -56,7 +56,7 @@ ELSEIF(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
     ADD_COMPILE_OPTIONS("$<$<AND:$<COMPILE_LANGUAGE:Fortran>,$<CONFIG:Release>>:-O3;-vec>")
 ELSE()
     MESSAGE(WARNING
-        "Unsupported Fortran compiler.\n"
+        "Unsupported Fortran compiler: ${CMAKE_Fortran_COMPILER_ID}."
         "Please use \"-DCMAKE_Fortran_FLAGS=...\" in the meantime and report the issue to the project maintainer."
     )
 ENDIF()

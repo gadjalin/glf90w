@@ -1,4 +1,4 @@
-program basic_window
+program simple_window
     use glf90w
 
     implicit none
@@ -8,13 +8,14 @@ program basic_window
     call glfwSetErrorCallback(handle_error)
 
     call glfwInit(ierr)
-    if (ierr /= 0) &
-        stop 'glfwInit()'
+    if (ierr /= 0) then
+        stop 'Error whilst initialising GLFW'
+    end if
 
     window = glfwCreateWindow(800, 600, 'Hello World')
     if (.not. associated(window)) then
         call glfwTerminate()
-        stop 'glfwCreateWindow()'
+        stop 'Error whilst creating window'
     end if
 
     call glfwMakeContextCurrent(window)
@@ -22,6 +23,7 @@ program basic_window
     do
         call glfwPollEvents()
 
+        call glfwSwapBuffers(window)
         if (glfwWindowShouldClose(window)) exit
     end do
 
@@ -38,4 +40,4 @@ program basic_window
             print '(''Error '', I8,'' : '',A)', code, desc
         end subroutine handle_error
 
-end program basic_window
+end program simple_window
