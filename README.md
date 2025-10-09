@@ -36,11 +36,13 @@ Table of Contents
 * [GLF90W](#glf90w)
    * [Introduction](#introduction)
    * [Compilation](#compilation)
+      * [Fortran 2023 compatibility](#fortran-2023-compatibility)
    * [Usage](#usage)
       * [Opaque pointers](#opaque-pointers)
       * [Logicals](#logicals)
       * [Pointer arguments](#pointer-arguments)
       * [Arrays](#arrays)
+      * [Strings](#strings)
       * [Callbacks](#callbacks)
    * [Contact](#contact)
 
@@ -48,7 +50,7 @@ Table of Contents
 
 This project uses CMake to compile.
 The only requirements are a Fortran compiler supporting the 2018 standard
-(and includeing a preprocessor) and CMake.
+(and including a preprocessor) and CMake.
 However, this repository includes GLFW as a submodule ([version 3.4](https://github.com/glfw/glfw/commits/3.4))
 so that it may be compiled together with GLF90W.
 Please refer to the [GLFW documentation](https://www.glfw.org/docs/latest/compile.html) for information about
@@ -75,8 +77,8 @@ cd glf90w
 cmake -DBUILD_SHARED_LIBS=OFF -B bin
 cmake --build bin
 ```
-It is usually recommended build a static library by setting the CMake `BUILD_SHARED_LIBS` variables to `OFF`.
-In the same way, you can also use `-DCMAKE_BUILD_TYPE=Debug` to build a debug version (minimal compiler optimisation and debug symbols).
+It is usually recommended to build a static library by setting the CMake `BUILD_SHARED_LIBS` variable to `OFF`.
+In the same way, you can also set the `CMAKE_BUILD_TYPE` variable to `Debug` to build a debug version (minimal compiler optimisation and debug symbols).
 By default, `BUILD_SHARED_LIBS` is `OFF` and `CMAKE_BUILD_TYPE` is `Release` (full compiler optimisation and no debug symbols).
 
 On Windows, the exact process may vary depending on your environment. You may
@@ -102,12 +104,13 @@ intrinsic ones instead.
 Because some compilers do not yet fully support this standard, the two routines
 can be deactivated seperately using preprocessor macros.
 
-Define `GLF90W_USE_INTRINSIC_F_C_STRING` to deactivate the custom `f_c_string`
+ - Define `GLF90W_USE_INTRINSIC_F_C_STRING` to deactivate the custom `f_c_string`
 implementation (and rely on the intrinsic).
-Define `GLF90W_USE_INTRINSIC_C_F_STRPOINTER` to deactivate the custom `f_c_string`
+ - Define `GLF90W_USE_INTRINSIC_C_F_STRPOINTER` to deactivate the custom `f_c_string`
 implementation (and rely on the intrinsic).
 
-This can be done using CMake by adding these options to the command line
+This can be done using CMake by adding these options to the command line:
+
 `-DGLF90W_USE_INTRINSIC_F_C_STRING` and `-DGLF90W_USE_INTRINSIC_C_F_STRPOINTER`
 
 ## Usage
@@ -116,7 +119,7 @@ GLF90W is made so that essential knowledge of the Fortran language and the
 official [GLFW C Documentation](https://www.glfw.org/docs/latest/) should
 mostly be enough to figure out how to do things.
 
-A basic working example is given [here](examples/basic_window.F90) to reflect
+A basic working example is given [here](examples/simple_window.F90) to reflect
 [this simple C example](https://www.glfw.org/documentation.html).
 
 There are however a few subtleties, introduced as a consequence of Fortran not
@@ -124,7 +127,7 @@ being C, that deserve a clear explanation for the unsure user.
 
 ### Opaque pointers
 
-GLFW uses many opaque pointer types such as `GLFWwindow`, `GLFWmonitor`, etc.
+GLFW uses a few opaque pointer types such as `GLFWwindow`, `GLFWmonitor`, etc.
 so that the user does not have to worry about the actual, platform-dependent
 implementation.
 Creating a window looks like this:
@@ -193,15 +196,15 @@ end if
 In the same fashion, the C language is what is known as a pass-by-value
 language, whereas Fortran is pass-by-reference.
 This means that where the Fortran language can use subroutines and the `intent(out)`
-attribute to return values to the user through one of the rountine's input
-argument, the C language must ask the user for pointers.
-On the other hand, this means that the output can be ignore by passing `NULL`
+attribute to return values to the user through one of the routine's input
+arguments, the C language must ask the user for pointers.
+On the other hand, this means that the output can be ignored by passing `NULL`
 to the C function (assuming it can handle this case), whereas something must be
 passed to the Fortran routine, unless the dummy argument is marked as `optional`.
 
 There are a few GLFW functions that rely on this mechanic to return multiple
-values to the user, for example `glfwGetCursorPos` takes two `double*` to store
-the result, but these can be ignore by passing `NULL`.
+values to the user. For example `glfwGetCursorPos` takes two `double*` to store
+the result, but these can be ignored by passing `NULL`.
 To mimic this behaviour and allow the user to ignore certain return arguments, the
 arguments in question are marked as `optional` in the Fortran binding, so that
 doing:
@@ -215,7 +218,7 @@ glfwGetCursorPos(window, NULL, y);
 
 This logic applies to function pointers as well, where the `glfwSet*Callback`
 collection of functions can take a `NULL` function pointer to reset a callback, in which
-case the Fortran binding marks the it as optional in the same way as before, so
+case the Fortran binding marks it as optional in the same way, so
 that:
 ```fortran
 call glfwSetWindowCloseCallback(window)
@@ -225,6 +228,10 @@ code would:
 ```c
 glfwSetWindowCloseCallback(window, NULL);
 ```
+
+Callback-related routines such as this also have the ability to return a
+pointer to the previously used user callback. This case is discussed a [little
+further](#callbacks).
 
 ### Arrays
 
@@ -244,19 +251,53 @@ axes = glfwGetJoystickAxes(jid)
 in either case, a `count` argument is not necessary as it can be obtained by
 doing `size(axes)` instead.
 
+### Strings
+
+Again, C strings work very differently from the Fortran `character` type.
+Fortunately, GLF90W takes care of the conversion for you.
+
+As such, it should be noted that functions taking strings as input, such as
+`glfwCreateWindow` or `glfwWindowHintString`, must make copies of the Fortran
+strings before passing them to the C code. This is however not true for
+functions returning strings.
+
+GLFW functions always handle strings using pointers, as is usually done in C.
+For this reason, it is specified in the official documentation when those are pointers to static strings (not dynamically allocated),
+or are pointers to memory whose allocation is handled by GLFW, and that the user
+should not `free`, or use out of their defined scope.
+The corresponding Fortran GLF90W routines do not make copies of these strings,
+and use them as C pointers, simply casting them to Fortran pointers in
+the appropriate way.
+
+However, the user on the Fortran side is not enforced to use pointers. Using an
+allocatable Fortran string to retrieve the return value of a GLF90W routine
+will allocate a new string and make a copy of the returned one:
+```fortran
+type(GLFWwindow) :: window
+character(len=:), allocatable :: title
+...
+title = glfwGetWindowTitle(window) ! Normal assignment to an allocatable scalar copies the returned string!
+```
+
+If the user does not wish to make a copy, then a
+`pointer` variable and pointer assignment must be used:
+```fortran
+character(len=:), pointer :: version
+...
+version => glfwGetVersionString() ! Pointer assignment to a pointer variable retrieves the original GLFW pointer
+```
+
 ### Callbacks
 
 GLFW provides the user with callback facilities to handle events such as
-internal errors, keyboard key presses or mouse clicks, where the user-provided callback 
-routines must match a certain signature.
-The [basic_window.F90 example](examples/basic_window.f90) shows how to setup an
-error callback.
+internal errors, keyboard interactions or context changes. The user-provided callback 
+routines must match a certain signature for this to work.
 
 GLF90W introduces callback wrappers to handle the C-interopability with GLFW,
 such as string conversions and the pass-by-value-pass-by-reference extravaganza.
-This way, the user may provide proper Fortran callback routines and not have to
+This way, the user may provide plain Fortran callback routines and not have to
 worry about the fact that GLFW will call them with C standards, while still
-matching the signature expected by the C code, with a mostly straight
+matching the signature expected by the C code, with a mostly straightforward
 translation to Fortran.
 
 The expected signatures for the callback routines can be found in the GLFW
@@ -266,7 +307,7 @@ However, some Fortran interfaces, such as `GLFWcursorenterfun` use the `logical`
 type where this is, well, logical.
 Also note that `GLFWscrollfun` for the mouse scroll callback takes `double`s!
 
-The exact Fortran interfaces can be found in the [glf90w.F90](src/glf90w.F90)
+The exact expected Fortran interfaces can be found in the [glf90w.F90](src/glf90w.F90)
 file around line 550.
 
 This is an example of setting a callback for the mouse scroll event
@@ -322,6 +363,12 @@ be filled with a pointer to the previous callback if present.
 
 To reset a callback, simply don't pass one, as shown in [the previous
 section](#pointer-arguments).
+
+Some example codes show how callbacks can be used:
+ - The [simple_window.F90 example](examples/simple_window.F90) shows how to setup an
+error callback.
+ - The [simple_input.F90 example](examples/simple_input.F90) shows how to use
+other user-input-related callbacks.
 
 ## Contact
 
